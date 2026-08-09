@@ -1,0 +1,247 @@
+{
+  "name": "CRM Intake — AI Triage → HubSpot (HITL)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "contact-democo",
+        "formTitle": "Contact DemoCo",
+        "formDescription": "Inbound Enterprise & Support Inquiry",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Full name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Work email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Company"
+            },
+            {
+              "fieldLabel": "Plan interest",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Starter"
+                  },
+                  {
+                    "option": "Pro"
+                  },
+                  {
+                    "option": "Enterprise"
+                  },
+                  {
+                    "option": "Not sure"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Message",
+              "fieldType": "textarea",
+              "requiredField": true
+            }
+          ]
+        }
+      },
+      "name": "Form Trigger",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "run_id",
+              "value": "=crm_{{ $execution.id }}"
+            },
+            {
+              "name": "started_at",
+              "value": "={{ $now.toISO() }}"
+            },
+            {
+              "name": "name",
+              "value": "={{ $json['Full name'] }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json['Work email'] }}"
+            },
+            {
+              "name": "company",
+              "value": "={{ $json['Company'] || 'N/A' }}"
+            },
+            {
+              "name": "plan",
+              "value": "={{ $json['Plan interest'] || 'Not sure' }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json['Message'] }}"
+            }
+          ]
+        }
+      },
+      "name": "Init Run",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $input.first().json;\nconst issues = [];\nconst email = String(j.email ?? '').trim().toLowerCase();\nif (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$/.test(email)) issues.push('invalid_email');\nif (!j.name || String(j.name).trim().length < 2) issues.push('missing_name');\nif (!j.message || String(j.message).trim().length < 10) issues.push('message_too_short');\nreturn [{ json: { ...j, email, valid: issues.length === 0, issues } }];"
+      },
+      "name": "Normalize & Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [640, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "appToken",
+        "resource": "contact",
+        "operation": "getMany",
+        "limit": 1,
+        "filters": {
+          "property": "email",
+          "value": "={{ $json.email }}"
+        }
+      },
+      "name": "Find Existing Contact",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 1,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Request from: {{ $('Normalize & Validate').item.json.name }} <{{ $('Normalize & Validate').item.json.email }}> (company: {{ $('Normalize & Validate').item.json.company }}, plan: {{ $('Normalize & Validate').item.json.plan }})\nContact exists in HubSpot: {{ $json.id ? true : false }}\nMessage: {{ $('Normalize & Validate').item.json.message }}",
+        "options": {
+          "systemMessage": "ROLE\nYou are DemoCo's intake triage agent. You classify inbound requests and draft a customer reply. You NEVER promise refunds, discounts, credits, or features that are not in the knowledge base.\n\nPROCEDURE\n1. Read the request and CRM lookup status.\n2. If touching policy, query lookup_kb for real policy facts.\n3. Classify: intent (sales | support | billing | spam | unclear), urgency (low | normal | high | critical), sentiment (positive | neutral | negative).\n4. Propose crm_action: create_deal | create_ticket | update_contact | create_contact | no_action."
+        }
+      },
+      "name": "Triage Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1060, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const t = $input.first().json;\nconst base = $('Normalize & Validate').first().json;\n\nconst INTENTS = ['sales','support','billing','spam','unclear'];\nconst ACTIONS = ['create_contact','create_deal','create_ticket','update_contact','no_action'];\nconst flags = [];\nif (!INTENTS.includes(t.intent)) { t.intent = 'unclear'; flags.push('intent_repaired'); }\nif (!ACTIONS.includes(t.crm_action)) { t.crm_action = 'create_ticket'; flags.push('action_repaired'); }\n\nconst PROMISES = /\\b(refund (has been |will be |is )?(issued|approved|processed)|we (will|have) (issued|refunded|credited)|discount code|free (months|upgrade)|waive[ds]? the fee)\\b/i;\nconst promises = PROMISES.test(t.suggested_reply ?? '');\nif (promises) flags.push('promise_detected');\n\nlet needsHuman = t.needs_human !== false;\nif (t.intent === 'spam' && t.crm_action === 'no_action') needsHuman = false;\nif (promises || t.intent === 'unclear' || t.urgency === 'critical') needsHuman = true;\n\nconst masked = base.email.replace(/^(.).*?@(.).*?\\./, '$1***@$2***.');\n\nreturn [{ json: {\n  ...t, needs_human: needsHuman, flags,\n  masked_contact: masked,\n  run_id: $('Init Run').first().json.run_id,\n  started_at: $('Init Run').first().json.started_at,\n  name: base.name, email: base.email, company: base.company, message: base.message, plan: base.plan,\n}}];"
+      },
+      "name": "Validate Triage",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1280, 300]
+    },
+    {
+      "parameters": {
+        "resume": "webhook",
+        "limitWaitTime": {
+          "values": {
+            "unit": "hours",
+            "amount": 48
+          }
+        }
+      },
+      "name": "Wait for Approval",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [1500, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const w = $('Wait for Approval').first().json;\nconst body = w.body ?? {};\nconst query = w.query ?? {};\nconst action = String(body.action ?? query.action ?? '').toLowerCase();\nconst decision = ['approve','reject'].includes(action) ? action : 'timeout';\nconst t = $('Validate Triage').first().json;\nreturn [{ json: { ...t, decision, decided_at: new Date().toISOString() } }];"
+      },
+      "name": "Parse Decision",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1720, 300]
+    }
+  ],
+  "connections": {
+    "Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "Init Run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Init Run": {
+      "main": [
+        [
+          {
+            "node": "Normalize & Validate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize & Validate": {
+      "main": [
+        [
+          {
+            "node": "Find Existing Contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Existing Contact": {
+      "main": [
+        [
+          {
+            "node": "Triage Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Triage Agent": {
+      "main": [
+        [
+          {
+            "node": "Validate Triage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Triage": {
+      "main": [
+        [
+          {
+            "node": "Wait for Approval",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Approval": {
+      "main": [
+        [
+          {
+            "node": "Parse Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

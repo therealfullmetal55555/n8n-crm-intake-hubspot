@@ -1,0 +1,57 @@
+{
+  "name": "Error Handler — CRM Intake",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const err = $input.first().json.execution.error;\nreturn [{\n  json: {\n    timestamp: new Date().toISOString(),\n    workflow: $input.first().json.workflow.name,\n    node: err.node ? err.node.name : 'Unknown',\n    message: err.message || 'Execution error',\n    execution_id: $input.first().json.execution.id\n  }\n}];"
+      },
+      "name": "Format Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetId": "CRM_Intake_Spreadsheet",
+        "range": "Errors!A:E",
+        "options": {}
+      },
+      "name": "Log Error to Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 3,
+      "position": [640, 300]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Format Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Error": {
+      "main": [
+        [
+          {
+            "node": "Log Error to Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
