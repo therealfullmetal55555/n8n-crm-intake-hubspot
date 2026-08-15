@@ -1,0 +1,62 @@
+[
+  {
+    "id": "T1",
+    "name": "Alice Mets",
+    "email": "alice@acme.io",
+    "company": "Acme OÜ",
+    "plan": "Pro",
+    "message": "We're a 20-person ops team and want a demo of Pro this month.",
+    "expected_intent": "sales",
+    "expected_action": "create_deal",
+    "expected_urgency": "normal",
+    "human_action": "approve"
+  },
+  {
+    "id": "T2",
+    "name": "Tõnis Kask",
+    "email": "tonis@oldco.ee",
+    "company": "OldCo",
+    "plan": "Starter",
+    "message": "I bought Starter 40 days ago and want a refund, this is unacceptable.",
+    "expected_intent": "billing",
+    "expected_action": "create_ticket",
+    "expected_urgency": "normal",
+    "human_action": "approve"
+  },
+  {
+    "id": "T3",
+    "name": "SEO Guru",
+    "email": "spam@bots.com",
+    "company": "BestBacklinks",
+    "plan": "Not sure",
+    "message": "1st page Google! Buy backlinks cheap, limited offer!!!",
+    "expected_intent": "spam",
+    "expected_action": "no_action",
+    "expected_urgency": "low",
+    "human_action": "auto"
+  },
+  {
+    "id": "T4",
+    "name": "Maria Saar",
+    "email": "maria@bigco.eu",
+    "company": "BigCo",
+    "plan": "Enterprise",
+    "message": "SERVICE IS DOWN FOR 2 HOURS. 50 engineers blocked. We need your status page and a call with your CEO NOW.",
+    "expected_intent": "support",
+    "expected_action": "create_ticket",
+    "expected_urgency": "critical",
+    "human_action": "approve"
+  },
+  {
+    "id": "T5",
+    "name": "Priit Lepik",
+    "email": "priit@growth.io",
+    "company": "Growth.io",
+    "plan": "Not sure",
+    "message": "Do you support SAML SSO? Also what would 50 users cost per year?",
+    "expected_intent": "unclear",
+    "expected_action": "create_ticket",
+    "expected_urgency": "normal",
+    "human_action": "approve"
+  }
+]
