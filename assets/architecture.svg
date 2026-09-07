@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 480" width="100%" height="100%">
+  <defs>
+    <style>
+      .bg { fill: #0A0A0A; }
+      .grid-line { stroke: #181818; stroke-width: 1; }
+      .box { fill: #111111; stroke: #262626; stroke-width: 1.5; rx: 4px; }
+      .box-active { fill: #141414; stroke: #00FF66; stroke-width: 1.5; rx: 4px; }
+      .box-gate { fill: #1A1414; stroke: #FF3366; stroke-width: 1.5; rx: 4px; }
+      .text-title { font-family: 'SF Mono', 'Courier New', monospace; font-size: 13px; fill: #FFFFFF; font-weight: bold; letter-spacing: 1px; }
+      .text-sub { font-family: 'SF Mono', 'Courier New', monospace; font-size: 11px; fill: #888888; }
+      .text-accent { font-family: 'SF Mono', 'Courier New', monospace; font-size: 11px; fill: #00FF66; }
+      .text-alert { font-family: 'SF Mono', 'Courier New', monospace; font-size: 11px; fill: #FF3366; }
+      .line { stroke: #333333; stroke-width: 1.5; stroke-dasharray: 4,4; }
+      .line-solid { stroke: #00FF66; stroke-width: 1.5; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="480" class="bg" />
+  
+  <!-- Grid -->
+  <line x1="0" y1="80" x2="1000" y2="80" class="grid-line" />
+  <line x1="0" y1="400" x2="1000" y2="400" class="grid-line" />
+  <line x1="200" y1="0" x2="200" y2="480" class="grid-line" />
+  <line x1="800" y1="0" x2="800" y2="480" class="grid-line" />
+
+  <!-- Header -->
+  <text x="40" y="50" class="text-title">// ARCHITECTURE :: CRM_INTAKE_HITL_GATEWAY</text>
+  <text x="740" y="50" class="text-accent">[STATUS: PRODUCTION_GATED]</text>
+
+  <!-- FORM INGESTION -->
+  <rect x="40" y="160" width="160" height="140" class="box" />
+  <text x="55" y="190" class="text-title">INBOUND INGEST</text>
+  <text x="55" y="215" class="text-sub">› Form / Webhook</text>
+  <text x="55" y="235" class="text-sub">› Regex Sanitizer</text>
+  <text x="55" y="255" class="text-sub">› Deterministic</text>
+  <text x="55" y="275" class="text-sub">› HubSpot Lookup</text>
+
+  <!-- CONNECTION -->
+  <line x1="200" y1="230" x2="250" y2="230" class="line-solid" />
+
+  <!-- TRIAGE AGENT -->
+  <rect x="250" y="130" width="220" height="200" class="box-active" />
+  <text x="270" y="165" class="text-title">GEMINI TRIAGE AGENT</text>
+  <text x="270" y="190" class="text-accent">› Intent / Urgency / Tone</text>
+  <text x="270" y="215" class="text-sub">› Tool: lookup_kb (Qdrant)</text>
+  <text x="270" y="240" class="text-sub">› Structured Output Parser</text>
+  <text x="270" y="265" class="text-alert">› Promise Detector Regex</text>
+  <text x="270" y="290" class="text-sub">› PII Masking Engine</text>
+  <text x="270" y="315" class="text-accent">› Max Iterations: 4</text>
+
+  <!-- CONNECTION -->
+  <line x1="470" y1="230" x2="520" y2="230" class="line-solid" />
+
+  <!-- HITL GATE -->
+  <rect x="520" y="150" width="200" height="160" class="box-gate" />
+  <text x="535" y="180" class="text-alert">HITL APPROVAL GATE</text>
+  <text x="535" y="205" class="text-sub">› Wait Node ($resumeUrl)</text>
+  <text x="535" y="225" class="text-sub">› Signed Webhook Token</text>
+  <text x="535" y="245" class="text-sub">› Approve / Reject Links</text>
+  <text x="535" y="265" class="text-sub">› 48-Hour SLA Timeout</text>
+  <text x="535" y="290" class="text-alert">› 0 Unapproved Writes</text>
+
+  <!-- BRANCHES -->
+  <line x1="720" y1="190" x2="780" y2="150" class="line-solid" />
+  <line x1="720" y1="270" x2="780" y2="310" class="line" />
+
+  <!-- APPROVED WRITE -->
+  <rect x="780" y="110" width="180" height="90" class="box-active" />
+  <text x="795" y="140" class="text-title">HUBSPOT CRM</text>
+  <text x="795" y="160" class="text-accent">› Upsert Contact</text>
+  <text x="795" y="175" class="text-accent">› Create Deal / Ticket</text>
+  <text x="795" y="190" class="text-sub">› Send Customer Draft</text>
+
+  <!-- REJECTED / TIMEOUT -->
+  <rect x="780" y="260" width="180" height="90" class="box" />
+  <text x="795" y="290" class="text-title">SAFE ABORT</text>
+  <text x="795" y="310" class="text-alert">› 0 HubSpot Mutations</text>
+  <text x="795" y="325" class="text-sub">› Backlog Trace Log</text>
+  <text x="795" y="340" class="text-sub">› SLA Alert Triggered</text>
+
+  <!-- FOOTER -->
+  <text x="40" y="435" class="text-sub">ZERO-COST INFRASTRUCTURE  |  100% AUDIT TRACE LOGGING  |  DETERMINISTIC SAFETY RAILS</text>
+</svg>
